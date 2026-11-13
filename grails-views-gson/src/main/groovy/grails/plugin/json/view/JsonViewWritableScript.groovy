@@ -205,10 +205,20 @@ abstract class JsonViewWritableScript extends AbstractWritableScript implements 
     }
 
     private GrailsView prepareParentWritable(GrailsViewTemplate parentTemplate, Map parentModel) {
-        parentModel.putAll(binding.variables)
+        // Never overwrite an entry that is already in the parent model. A collection reuses one model
+        // map for all its rows, so the binding still holds the entities of earlier rows under their
+        // class names; put/putAll let them replace the explicit `inherits model:` entry and, through
+        // the superclass-name key, the current row's own entity.
+        // The first value wins, so the superclass-name key gets the current row only because the
+        // collection loop puts the row variable into the map first (DefaultGrailsJsonViewHelper.render).
+        // A binding key that is itself a superclass name (a concrete superclass) keeps a stale entity;
+        // pass the row explicitly with `inherits model:` for such templates.
+        for (Map.Entry entry in binding.variables.entrySet()) {
+            parentModel.putIfAbsent(entry.key, entry.value)
+        }
         for (o in binding.variables.values()) {
             if (o != null) {
-                parentModel.put(GrailsNameUtils.getPropertyName(o.getClass().getSuperclass().getName()), o)
+                parentModel.putIfAbsent(GrailsNameUtils.getPropertyName(o.getClass().getSuperclass().getName()), o)
             }
         }
         JsonViewWritableScript writable = (JsonViewWritableScript) parentTemplate.make((Map) parentModel)
