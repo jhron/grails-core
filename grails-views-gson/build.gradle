@@ -28,7 +28,9 @@ plugins {
     id 'org.apache.grails.gradle.grails-code-style'
 }
 
-version = projectVersion
+// BSA fork: only this module is published, under its own version. Its dependencies stay on the
+// upstream ${projectVersion} artifacts from Maven Central.
+version = "${projectVersion}.BSA-SNAPSHOT"
 group = 'org.apache.grails'
 
 ext {
@@ -73,4 +75,35 @@ apply {
     from rootProject.layout.projectDirectory.file('gradle/docs-config.gradle')
     from rootProject.layout.projectDirectory.file('gradle/test-config.gradle')
     from rootProject.layout.projectDirectory.file('gradle/grails-extension-gradle-config.gradle')
+}
+
+// BSA Nexus publishing, as in the BSA ACL fork. Publish only with
+// :grails-views-gson:publishMavenPublicationToBsaNexusRepository.
+def bsaMavenReleaseUrl = project.findProperty('mavenReleaseUrl') ?: 'https://sirius.bsa-soft.cz/nexus/content/repositories/releases/'
+def bsaMavenSnapshotUrl = project.findProperty('mavenSnapshotUrl') ?: 'https://sirius.bsa-soft.cz/nexus/content/repositories/snapshots/'
+def bsaMavenRepositoryUrl = version.toString().endsWith('-SNAPSHOT') ? bsaMavenSnapshotUrl : bsaMavenReleaseUrl
+def bsaMavenUsername = project.findProperty('mavenUser') ?: System.getenv('MAVEN_USER')
+def bsaMavenPassword = project.findProperty('mavenPassword') ?: System.getenv('MAVEN_PASSWORD')
+
+publishing {
+    repositories {
+        maven {
+            name = 'bsaNexus'
+            url = uri(bsaMavenRepositoryUrl)
+            if (bsaMavenUsername && bsaMavenPassword) {
+                credentials {
+                    username = bsaMavenUsername
+                    password = bsaMavenPassword
+                }
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == 'publishMavenPublicationToBsaNexusRepository' }.configureEach {
+    doFirst {
+        if (!bsaMavenUsername || !bsaMavenPassword) {
+            throw new GradleException('Missing Maven repository credentials. Define mavenUser/mavenPassword Gradle properties or MAVEN_USER/MAVEN_PASSWORD environment variables.')
+        }
+    }
 }
