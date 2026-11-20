@@ -30,7 +30,7 @@ plugins {
 
 // BSA fork: only this module is published, under its own version. Its dependencies stay on the
 // upstream ${projectVersion} artifacts from Maven Central.
-version = "${projectVersion}.BSA-SNAPSHOT"
+version = "${projectVersion}.BSA"
 group = 'org.apache.grails'
 
 ext {
